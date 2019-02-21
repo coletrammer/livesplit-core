@@ -25,6 +25,7 @@ pub mod parser;
 mod run_metadata;
 pub mod saver;
 mod segment;
+mod segment_groups;
 mod segment_history;
 
 #[cfg(test)]
@@ -36,6 +37,7 @@ pub use editor::{Editor, RenameError};
 pub use linked_layout::LinkedLayout;
 pub use run_metadata::{CustomVariable, RunMetadata};
 pub use segment::Segment;
+pub use segment_groups::{SegmentGroup, SegmentGroups};
 pub use segment_history::SegmentHistory;
 
 #[cfg(feature = "auto-splitting")]
@@ -77,6 +79,7 @@ pub struct Run {
     metadata: RunMetadata,
     has_been_modified: bool,
     segments: Vec<Segment>,
+    segment_groups: SegmentGroups,
     custom_comparisons: Vec<String>,
     comparison_generators: ComparisonGenerators,
     auto_splitter_settings: String,
@@ -132,6 +135,7 @@ impl Run {
             metadata: RunMetadata::new(),
             has_been_modified: false,
             segments: Vec::new(),
+            segment_groups: SegmentGroups::new(),
             custom_comparisons: vec![personal_best::NAME.to_string()],
             comparison_generators: ComparisonGenerators(default_generators()),
             auto_splitter_settings: String::new(),
@@ -238,6 +242,11 @@ impl Run {
     #[inline]
     pub const fn segments_mut(&mut self) -> &mut Vec<Segment> {
         &mut self.segments
+    }
+
+    #[inline]
+    pub fn segment_groups_mut(&mut self) -> &mut SegmentGroups {
+        &mut self.segment_groups
     }
 
     /// Pushes the segment provided to the end of the list of segments of this Run.
