@@ -3,15 +3,9 @@ use crate::{
     layout::{LayoutDirection, LayoutState},
     platform::prelude::*,
     rendering::{
-        RenderContext,
-        consts::{
-            BOTH_PADDINGS, DEFAULT_COMPONENT_HEIGHT, DEFAULT_TEXT_SIZE, PADDING, TEXT_ALIGN_BOTTOM,
-            TEXT_ALIGN_TOP, THIN_SEPARATOR_THICKNESS, TWO_ROW_HEIGHT, vertical_padding,
-        },
-        font::CachedLabel,
-        resource::ResourceAllocator,
-        scene::Layer,
-        solid,
+        BOTH_PADDINGS, Backend, DEFAULT_COMPONENT_HEIGHT, DEFAULT_TEXT_SIZE, PADDING,
+        RenderContext, TEXT_ALIGN_BOTTOM, TEXT_ALIGN_TOP, THIN_SEPARATOR_THICKNESS, TWO_ROW_HEIGHT,
+        icon::Icon, vertical_padding,
     },
     settings::{Gradient, ListGradient},
 };
@@ -222,17 +216,19 @@ pub(in crate::rendering) fn render<A: ResourceAllocator>(
     }
 
     let icon_size = split_height - 2.0 * vertical_padding;
-    let icon_right = if component.has_icons {
-        BOTH_PADDINGS + icon_size
-    } else {
-        PADDING
-    };
 
-    cache
-        .splits
-        .resize_with(component.splits.len(), SplitCache::new);
+    for (i, split) in component.splits.iter().enumerate() {
+        let icon_left = if split.is_subsplit {
+            2.5 * PADDING
+        } else {
+            PADDING
+        };
+        let icon_right = if component.has_icons {
+            icon_left + PADDING + icon_size
+        } else {
+            icon_left
+        };
 
-    for (i, (split, split_cache)) in component.splits.iter().zip(&mut cache.splits).enumerate() {
         if component.show_thin_separators && i + 1 != component.splits.len() {
             context.render_rectangle(
                 separator_pos,
