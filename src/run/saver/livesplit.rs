@@ -306,7 +306,29 @@ pub fn save_run<W: fmt::Write>(run: &Run, writer: W) -> fmt::Result {
             })
         })?;
 
-        write_run_auto_splitter_settings(writer, run)
+        write_run_auto_splitter_settings(writer, run)?;
+
+        scoped_iter(
+            writer,
+            "SegmentGroups",
+            run.segment_groups().groups(),
+            |writer, group| {
+                writer.tag("SegmentGroup", |mut tag| {
+                    tag.attribute("start", DisplayAlreadyEscaped(group.start()))?;
+                    tag.attribute("end", DisplayAlreadyEscaped(group.end()))?;
+                    if let Some(name) = group.name() {
+                        tag.text_content(name)?;
+                    }
+                    Ok(())
+                })
+            },
+        )?;
+
+        writer.tag_with_text_content(
+            "AutoSplitterSettings",
+            NO_ATTRIBUTES,
+            Text::new_escaped(run.auto_splitter_settings()),
+        )
     })
 }
 
