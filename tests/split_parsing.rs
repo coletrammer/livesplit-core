@@ -5,6 +5,7 @@ mod parse {
     use livesplit_core::{
         Run, TimeSpan,
         analysis::total_playtime,
+        run::SegmentGroup,
         run::parser::{
             TimerKind, composite, flitter, livesplit, llanfair, llanfair_gered, opensplit,
             portal2_live_timer, source_live_timer, speedrun_igt, splitterino, splitterz,
@@ -60,6 +61,19 @@ mod parse {
     #[test]
     fn livesplit_celeste() {
         livesplit(run_files::CELESTE);
+    }
+
+    #[test]
+    fn segment_groups() {
+        let run = livesplit(run_files::LIVESPLIT_SEGMENT_GROUPS);
+        let groups = run.segment_groups().groups();
+        assert_eq!(groups[0], SegmentGroup::new(1, 4, None).unwrap());
+        assert_eq!(groups[1], SegmentGroup::new(4, 7, None).unwrap());
+        assert_eq!(groups[2], SegmentGroup::new(7, 11, None).unwrap());
+        assert_eq!(groups[3], SegmentGroup::new(11, 15, None).unwrap());
+        assert_eq!(groups[4], SegmentGroup::new(15, 20, None).unwrap());
+        assert_eq!(groups[5], SegmentGroup::new(20, 26, None).unwrap());
+        assert_eq!(groups[6], SegmentGroup::new(26, 33, None).unwrap());
     }
 
     #[test]

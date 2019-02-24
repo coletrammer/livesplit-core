@@ -16,7 +16,7 @@ use crate::{
         xml::{
             Reader,
             helper::{
-                Error as XmlError, attribute, attribute_escaped_err, end_tag, image,
+                Error as XmlError, attribute, attribute_err, attribute_escaped_err, end_tag, image,
                 optional_attribute_escaped_err, parse_attributes, parse_base, parse_children,
                 reencode_children, text, text_as_escaped_string_err, text_parsed,
             },
@@ -580,6 +580,7 @@ pub fn parse(source: &str) -> Result<Run> {
     let mut run = Run::new();
 
     let mut required_flags = 0u8;
+    let mut version = Version(1, 0, 0, 0);
 
     parse_base(&mut reader, "Run", |reader, attributes| {
         let mut version = Version(1, 0, 0, 0);
@@ -627,6 +628,39 @@ pub fn parse(source: &str) -> Result<Run> {
                 })
             }
             "AutoSplitterSettings" => parse_auto_splitter_settings(version, reader, &mut run),
+            "SegmentGroups" => {
+                let mut unordered_groups = Vec::new();
+                parse_children(reader, |reader, tag, attributes| {
+                    if tag.name() == "SegmentGroup" {
+                        let (mut start, mut end) = (0, 0);
+                        type_hint(attribute_err(attributes, "start", |t| {
+                            start = t.parse()?;
+                            Ok(())
+                        }))?;
+                        type_hint(attribute_err(attributes, "end", |t| {
+                            end = t.parse()?;
+                            Ok(())
+                        }))?;
+
+                        // TODO: An empty name is not equivalent to None outside
+                        // of parsing.
+                        let mut name = String::new();
+                        type_hint(text(reader, |t| name = t.into_owned()))?;
+
+                        unordered_groups.push(SegmentGroup::new_lossy(
+                            start,
+                            end,
+                            if name.is_empty() { None } else { Some(name) },
+                        ));
+
+                        Ok(())
+                    } else {
+                        type_hint(end_tag(reader))
+                    }
+                })?;
+                *run.segment_groups_mut() = SegmentGroups::from_vec_lossy(unordered_groups);
+                Ok(())
+            }
             "LayoutPath" => text(reader, |t| {
                 run.set_linked_layout(if t == "?default" {
                     Some(LinkedLayout::Default)
@@ -646,8 +680,51 @@ pub fn parse(source: &str) -> Result<Run> {
         });
     }
 
-    import_subsplits(&mut run);
+    if version < Version(1, 8, 0, 0) {
+        import_legacy_subsplits(&mut run);
+    }
+
     Ok(run)
+}
+
+fn import_legacy_subsplits(run: &mut Run) {
+    let mut groups = SegmentGroups::new();
+    let mut current_group_start = None;
+
+    for (index, segment) in run.segments_mut().iter_mut().enumerate() {
+        let name = segment.name_mut();
+
+        if name.starts_with("-") {
+            if current_group_start.is_none() {
+                current_group_start = Some(index);
+            }
+            name.remove(0);
+        } else {
+            let mut group = current_group_start
+                .take()
+                .map(|range_start| SegmentGroup::new(range_start, index + 1, None).unwrap());
+
+            if name.starts_with("{") {
+                let mut iter = name[1..].splitn(2, '}');
+                if let (Some(group_name), Some(segment_name)) = (iter.next(), iter.next()) {
+                    let segment_name = segment_name.trim_start();
+
+                    if let Some(group) = &mut group {
+                        group.set_name(Some(group_name.to_owned()));
+                    }
+
+                    let remove_count = segment_name.as_ptr() as usize - name.as_ptr() as usize;
+                    name.replace_range(0..remove_count, "");
+                }
+            }
+
+            if let Some(group) = group {
+                groups.push_back(group).unwrap();
+            }
+        }
+    }
+
+    *run.segment_groups_mut() = groups;
 }
 
 #[cfg(test)]
@@ -832,44 +909,4 @@ mod tests {
             },
         );
     }
-}
-
-fn import_subsplits(run: &mut Run) {
-    let mut groups = SegmentGroups::new();
-    let mut current_group_start = None;
-
-    for (index, segment) in run.segments_mut().iter_mut().enumerate() {
-        let name = segment.name_mut();
-
-        if name.starts_with('-') {
-            if current_group_start.is_none() {
-                current_group_start = Some(index);
-            }
-            name.remove(0);
-        } else {
-            let mut group = current_group_start
-                .take()
-                .map(|range_start| SegmentGroup::new(range_start, index + 1, None).unwrap());
-
-            if name.starts_with('{') {
-                let mut iter = name[1..].splitn(2, '}');
-                if let (Some(group_name), Some(segment_name)) = (iter.next(), iter.next()) {
-                    let segment_name = segment_name.trim_start();
-
-                    if let Some(group) = &mut group {
-                        group.set_name(Some(group_name.to_owned()));
-                    }
-
-                    let remove_count = segment_name.as_ptr() as usize - name.as_ptr() as usize;
-                    name.replace_range(0..remove_count, "");
-                }
-            }
-
-            if let Some(group) = group {
-                groups.push_back(group).unwrap();
-            }
-        }
-    }
-
-    *run.segment_groups_mut() = groups;
 }
