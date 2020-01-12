@@ -174,7 +174,7 @@ pub fn save_run<W: fmt::Write>(run: &Run, writer: W) -> fmt::Result {
     let base64_buf = &mut Vec::new();
     let image_buf = &mut Cow::Borrowed(&LSS_IMAGE_HEADER[..]);
 
-    writer.tag_with_content("Run", [("version", Text::new_escaped("1.8.0"))], |writer| {
+    writer.tag_with_content("Run", [("version", Text::new_escaped("1.8.1"))], |writer| {
         image(writer, "GameIcon", run.game_icon(), base64_buf, image_buf)?;
         writer.tag_with_text_content("GameName", NO_ATTRIBUTES, run.game_name())?;
         writer.tag_with_text_content("CategoryName", NO_ATTRIBUTES, run.category_name())?;
