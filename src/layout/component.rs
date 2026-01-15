@@ -2,8 +2,8 @@ use super::{ComponentSettings, ComponentState, GeneralSettings};
 use crate::{
     component::{
         blank_space, current_comparison, current_pace, delta, detailed_timer, graph, pb_chance,
-        possible_time_save, previous_segment, segment_time, separator, splits, sum_of_best, text,
-        timer, title, total_playtime,
+        possible_time_save, previous_segment, reset_chance, segment_time, separator, splits,
+        sum_of_best, text, timer, title, total_playtime,
     },
     platform::prelude::*,
     settings::{ImageCache, SettingsDescription, Value},
@@ -33,6 +33,8 @@ pub enum Component {
     PossibleTimeSave(possible_time_save::Component),
     /// The Previous Segment Component.
     PreviousSegment(previous_segment::Component),
+    /// The Reset Chance Component.
+    ResetChance(reset_chance::Component),
     /// The Segment Time Component.
     SegmentTime(segment_time::Component),
     /// The Separator Component.
@@ -102,6 +104,12 @@ impl From<possible_time_save::Component> for Component {
 impl From<previous_segment::Component> for Component {
     fn from(component: previous_segment::Component) -> Self {
         Self::PreviousSegment(component)
+    }
+}
+
+impl From<reset_chance::Component> for Component {
+    fn from(component: reset_chance::Component) -> Self {
+        Self::ResetChance(component)
     }
 }
 
@@ -260,6 +268,7 @@ impl Component {
             Component::PreviousSegment(component) => {
                 ComponentState::KeyValue(component.state(timer, layout_settings))
             }
+            Component::ResetChance(component) => ComponentState::KeyValue(component.state(timer)),
             Component::SegmentTime(component) => ComponentState::KeyValue(component.state(timer)),
             Component::Separator(component) => ComponentState::Separator(component.state()),
             Component::Splits(component) => {
@@ -306,6 +315,9 @@ impl Component {
             Component::PreviousSegment(component) => {
                 ComponentSettings::PreviousSegment(component.settings().clone())
             }
+            Component::ResetChance(component) => {
+                ComponentSettings::ResetChance(component.settings().clone())
+            }
             Component::SegmentTime(component) => {
                 ComponentSettings::SegmentTime(component.settings().clone())
             }
@@ -335,6 +347,7 @@ impl Component {
             Component::PbChance(component) => component.name().into(),
             Component::PossibleTimeSave(component) => component.name(),
             Component::PreviousSegment(component) => component.name(),
+            Component::ResetChance(component) => component.name().into(),
             Component::SegmentTime(component) => component.name(),
             Component::Separator(component) => component.name().into(),
             Component::Splits(component) => component.name().into(),
@@ -377,6 +390,7 @@ impl Component {
             Component::PbChance(component) => component.settings_description(),
             Component::PossibleTimeSave(component) => component.settings_description(),
             Component::PreviousSegment(component) => component.settings_description(),
+            Component::ResetChance(component) => component.settings_description(),
             Component::SegmentTime(component) => component.settings_description(),
             Component::Separator(component) => component.settings_description(),
             Component::Splits(component) => component.settings_description(),
@@ -405,6 +419,7 @@ impl Component {
             Component::DetailedTimer(component) => component.set_value(index, value),
             Component::Graph(component) => component.set_value(index, value),
             Component::PbChance(component) => component.set_value(index, value),
+            Component::ResetChance(component) => component.set_value(index, value),
             Component::PossibleTimeSave(component) => component.set_value(index, value),
             Component::PreviousSegment(component) => component.set_value(index, value),
             Component::SegmentTime(component) => component.set_value(index, value),

@@ -31,6 +31,7 @@ mod graph;
 mod pb_chance;
 mod possible_time_save;
 mod previous_segment;
+mod reset_chance;
 mod splits;
 mod sum_of_best;
 mod text;
@@ -648,6 +649,7 @@ where
                     "PBChance.dll" => pb_chance::Component::new().into(),
                     "LiveSplit.PossibleTimeSave.dll" => possible_time_save::Component::new().into(),
                     "LiveSplit.PreviousSegment.dll" => previous_segment::Component::new().into(),
+                    "LiveSplit.ResetChance.dll" => reset_chance::Component::new().into(),
                     "" => separator::Component::new().into(),
                     "LiveSplit.Splits.dll" | "LiveSplit.Subsplits.dll" => {
                         splits::Component::new().into()
@@ -673,6 +675,7 @@ where
                         Component::DetailedTimer(c) => detailed_timer::settings(reader, c),
                         Component::Graph(c) => graph::settings(reader, c),
                         Component::PbChance(c) => pb_chance::settings(reader, c),
+                        Component::ResetChance(c) => reset_chance::settings(reader, c),
                         Component::PossibleTimeSave(c) => possible_time_save::settings(reader, c),
                         Component::PreviousSegment(c) => previous_segment::settings(reader, c),
                         Component::SegmentTime(_) => end_tag(reader),
