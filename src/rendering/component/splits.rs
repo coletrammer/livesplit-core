@@ -3,9 +3,15 @@ use crate::{
     layout::{LayoutDirection, LayoutState},
     platform::prelude::*,
     rendering::{
-        BOTH_PADDINGS, Backend, DEFAULT_COMPONENT_HEIGHT, DEFAULT_TEXT_SIZE, PADDING,
-        RenderContext, TEXT_ALIGN_BOTTOM, TEXT_ALIGN_TOP, THIN_SEPARATOR_THICKNESS, TWO_ROW_HEIGHT,
-        icon::Icon, vertical_padding,
+        RenderContext,
+        consts::{
+            BOTH_PADDINGS, DEFAULT_COMPONENT_HEIGHT, DEFAULT_TEXT_SIZE, PADDING, TEXT_ALIGN_BOTTOM,
+            TEXT_ALIGN_TOP, THIN_SEPARATOR_THICKNESS, TWO_ROW_HEIGHT, vertical_padding,
+        },
+        font::CachedLabel,
+        resource::ResourceAllocator,
+        scene::Layer,
+        solid,
     },
     settings::{Gradient, ListGradient},
 };
@@ -217,7 +223,11 @@ pub(in crate::rendering) fn render<A: ResourceAllocator>(
 
     let icon_size = split_height - 2.0 * vertical_padding;
 
-    for (i, split) in component.splits.iter().enumerate() {
+    cache
+        .splits
+        .resize_with(component.splits.len(), SplitCache::new);
+
+    for (i, (split, split_cache)) in component.splits.iter().zip(&mut cache.splits).enumerate() {
         let icon_left = if split.is_subsplit {
             2.5 * PADDING
         } else {
@@ -243,13 +253,13 @@ pub(in crate::rendering) fn render<A: ResourceAllocator>(
                 &component.current_split_gradient,
             );
         } else if let Some((even, odd)) = &split_background {
-            let color = if split.index % 2 == 0 { even } else { odd };
+            let color = if split.is_even { even } else { odd };
             context.render_background(split_background_bottom_right, color);
         }
 
         {
             if let Some(icon) = context.create_image(&split.icon) {
-                context.render_image([PADDING, icon_y], [icon_size, icon_size], icon);
+                context.render_image([icon_left, icon_y], [icon_size, icon_size], icon);
             }
 
             let mut left_x = split_width - PADDING;

@@ -583,7 +583,6 @@ pub fn parse(source: &str) -> Result<Run> {
     let mut version = Version(1, 0, 0, 0);
 
     parse_base(&mut reader, "Run", |reader, attributes| {
-        let mut version = Version(1, 0, 0, 0);
         type_hint(optional_attribute_escaped_err(attributes, "version", |t| {
             version = parse_version(t)?;
             Ok(())
@@ -658,6 +657,7 @@ pub fn parse(source: &str) -> Result<Run> {
                         type_hint(end_tag(reader))
                     }
                 })?;
+                println!("{:?}", unordered_groups);
                 *run.segment_groups_mut() = SegmentGroups::from_vec_lossy(unordered_groups);
                 Ok(())
             }

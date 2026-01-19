@@ -18,7 +18,7 @@ use core::{
     cmp::{max, min},
     iter,
 };
-use serde::{Deserialize, Serialize};
+use serde_derive::{Deserialize, Serialize};
 
 #[cfg(test)]
 mod tests;
