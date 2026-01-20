@@ -1,3 +1,4 @@
+use serde_derive::{Deserialize, Serialize};
 use {
     crate::Segment,
     std::{
@@ -6,18 +7,71 @@ use {
     },
 };
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct SegmentGroup {
+#[derive(Copy, Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct SegmentRange {
     start: usize,
     /// exclusive
     end: usize,
+}
+
+impl SegmentRange {
+    pub fn new(start: usize, end: usize) -> Option<Self> {
+        if end > start {
+            Some(SegmentRange { start, end })
+        } else {
+            None
+        }
+    }
+
+    pub fn new_lossy(start: usize, end: usize) -> Self {
+        Self {
+            start,
+            end: end.max(start + 1),
+        }
+    }
+
+    pub fn single(start: usize) -> Self {
+        Self {
+            start,
+            end: start + 1,
+        }
+    }
+
+    pub fn start(&self) -> usize {
+        self.start
+    }
+
+    pub fn end(&self) -> usize {
+        self.end
+    }
+
+    pub fn last(&self) -> usize {
+        if self.start == self.end {
+            self.start
+        } else {
+            self.end - 1
+        }
+    }
+
+    pub fn contains(&self, segment_index: usize) -> bool {
+        segment_index >= self.start && segment_index < self.end
+    }
+
+    pub fn iter(&self) -> std::ops::Range<usize> {
+        self.start..self.end
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct SegmentGroup {
+    range: SegmentRange,
     name: Option<String>,
 }
 
 impl SegmentGroup {
     pub fn new(start: usize, end: usize, name: Option<String>) -> Result<Self, Option<String>> {
-        if end > start {
-            Ok(Self { start, end, name })
+        if let Some(range) = SegmentRange::new(start, end) {
+            Ok(Self { range, name })
         } else {
             Err(name)
         }
@@ -25,8 +79,7 @@ impl SegmentGroup {
 
     pub fn new_lossy(start: usize, end: usize, name: Option<String>) -> Self {
         Self {
-            start,
-            end: end.max(start + 1),
+            range: SegmentRange::new_lossy(start, end),
             name,
         }
     }
@@ -40,11 +93,11 @@ impl SegmentGroup {
     }
 
     pub fn start(&self) -> usize {
-        self.start
+        self.range.start
     }
 
     pub fn end(&self) -> usize {
-        self.end
+        self.range.end
     }
 }
 
@@ -57,12 +110,14 @@ impl SegmentGroups {
     }
 
     pub fn from_vec_lossy(mut unordered_groups: Vec<SegmentGroup>) -> Self {
-        unordered_groups.sort_unstable_by_key(|g| g.start);
+        unordered_groups.sort_unstable_by_key(|g| g.start());
         let mut min_start = 0;
         for group in &mut unordered_groups {
-            group.start = group.start.max(min_start);
-            group.end = group.end.max(group.start + 1);
-            min_start = group.end;
+            group.range = SegmentRange {
+                start: group.start().max(min_start),
+                end: group.end().max(group.start() + 1),
+            };
+            min_start = group.end();
         }
         Self(unordered_groups)
     }
@@ -73,7 +128,11 @@ impl SegmentGroups {
     }
 
     pub fn push_back(&mut self, group: SegmentGroup) -> Result<(), SegmentGroup> {
-        if self.0.last().map_or(true, |last| group.start >= last.end) {
+        if self
+            .0
+            .last()
+            .map_or(true, |last| group.start() >= last.end())
+        {
             self.0.push(group);
             Ok(())
         } else {
@@ -150,7 +209,7 @@ impl<'groups, 'segments> Iterator for SegmentGroupsIter<'groups, 'segments> {
         if self
             .iter
             .peek()
-            .map_or(true, |group| group.start > start_index)
+            .map_or(true, |group| group.start() > start_index)
         {
             self.index += 1;
             let ending_segment = self.segments.get(start_index)?;
@@ -163,8 +222,8 @@ impl<'groups, 'segments> Iterator for SegmentGroupsIter<'groups, 'segments> {
             })
         } else {
             let group = self.iter.next()?;
-            self.index = group.end;
-            let segments = self.segments.get(group.start..group.end)?;
+            self.index = group.end();
+            let segments = self.segments.get(group.start()..group.end())?;
             Some(SegmentGroupView {
                 name: group.name.as_ref().map(String::as_str),
                 segments,

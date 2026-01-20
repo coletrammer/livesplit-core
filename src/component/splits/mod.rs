@@ -7,7 +7,7 @@
 
 use crate::{
     GeneralLayoutSettings, Segment,
-    run::SegmentGroupsIter,
+    run::{SegmentGroupsIter, SegmentRange},
     settings::{
         self, Color, Field, Gradient, ImageCache, ImageId, ListGradient, SettingsDescription, Value,
     },
@@ -125,13 +125,8 @@ pub struct SplitState {
     /// Describes whether the row should be considered an even or an odd row.
     /// This is useful for visualizing the rows with alternating colors.
     pub is_even: bool,
-    /// The index of the segment based on all the segments of the run. This may
-    /// differ from the index of this `SplitState` in the `State` object, as
-    /// there can be a scrolling window, showing only a subset of segments.
-    /// Indices are not guaranteed to be unique, as they may appear in both
-    /// group headers and in segments within the groups. Only the pair of index
-    /// and `is_subsplit` is unique.
-    pub index: usize,
+    /// TODO
+    pub segment_range: SegmentRange,
 }
 
 impl Clear for SplitState {
@@ -377,7 +372,7 @@ impl Component {
                 name: String::new(),
                 columns: ClearVec::new(),
                 is_current_split: false,
-                index: 0,
+                segment_range: SegmentRange::default(),
                 is_subsplit: false,
                 is_even: false,
             });
@@ -387,33 +382,28 @@ impl Component {
 
             state.name.push_str(segment.name);
 
-            if segment.kind
-                != FlattenedSegmentGroupItemKind::GroupHeader(SegmentGroupVisibility::Shown)
-            {
-                for column in columns {
-                    column::update_state(
-                        state.columns.push_with(|| ColumnState {
-                            value: String::new(),
-                            semantic_color: Default::default(),
-                            visual_color: Color::transparent(),
-                            updates_frequently: false,
-                        }),
-                        column,
-                        timer,
-                        &self.settings,
-                        layout_settings,
-                        segment.segment,
-                        segment.index,
-                        current_split,
-                        method,
-                    );
-                }
+            for column in columns {
+                column::update_state(
+                    state.columns.push_with(|| ColumnState {
+                        value: String::new(),
+                        semantic_color: Default::default(),
+                        visual_color: Color::transparent(),
+                        updates_frequently: false,
+                    }),
+                    column,
+                    timer,
+                    &self.settings,
+                    layout_settings,
+                    &segment.segment_range,
+                    current_split,
+                    method,
+                );
             }
 
             state.is_current_split = segment.in_focus;
             state.is_subsplit = segment.kind == FlattenedSegmentGroupItemKind::Subsplit;
             state.is_even = flattened_index % 2 == 0;
-            state.index = segment.index;
+            state.segment_range = segment.segment_range;
         }
 
         if fill_with_blank_space && state.splits.len() < visual_split_count {
@@ -426,12 +416,11 @@ impl Component {
                     is_current_split: false,
                     is_subsplit: false,
                     is_even: true,
-                    index: 0,
+                    segment_range: SegmentRange::single((usize::MAX ^ 1) - 2 * i),
                 });
                 state.is_current_split = false;
                 state.is_subsplit = false;
                 state.is_even = true;
-                state.index = (usize::MAX ^ 1) - 2 * i;
             }
         }
 
@@ -705,7 +694,7 @@ enum FlattenedSegmentGroupItemKind {
 struct FlattenedSegmentGroupItem<'groups_or_segments, 'segments> {
     segment: &'segments Segment,
     name: &'groups_or_segments str,
-    index: usize,
+    segment_range: SegmentRange,
     kind: FlattenedSegmentGroupItemKind,
     in_focus: bool,
 }
@@ -725,7 +714,7 @@ fn flatten<'groups_or_segments, 'segments: 'groups_or_segments>(
                             FlattenedSegmentGroupItem {
                                 segment: subsplit,
                                 name: subsplit.name(),
-                                index,
+                                segment_range: SegmentRange::single(index),
                                 kind: FlattenedSegmentGroupItemKind::Subsplit,
                                 in_focus: index == focus_segment_index,
                             }
@@ -737,14 +726,13 @@ fn flatten<'groups_or_segments, 'segments: 'groups_or_segments>(
                 (None, SegmentGroupVisibility::Collapsed)
             };
 
-        let header_index = start_index + group.len() - 1;
         iter::once(FlattenedSegmentGroupItem {
             segment: group.ending_segment(),
             name: group.name_or_default(),
-            index: header_index,
+            segment_range: SegmentRange::new_lossy(start_index, start_index + group.len()),
             kind: FlattenedSegmentGroupItemKind::GroupHeader(visibility),
             in_focus: visibility == SegmentGroupVisibility::Collapsed
-                && header_index == focus_segment_index,
+                && group.contains(focus_segment_index),
         })
         .chain(children.into_iter().flatten())
     })

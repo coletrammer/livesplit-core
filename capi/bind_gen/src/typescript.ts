@@ -428,6 +428,12 @@ export interface SplitsComponentStateJson {
     current_split_gradient: Gradient,
 }
 
+/** TODO */
+export interface SegmentRange {
+    start: number,
+    end: number,
+}
+
 /** The state object that describes a single segment's information to visualize. */
 export interface SplitStateJson {
     /**
@@ -456,14 +462,9 @@ export interface SplitStateJson {
      */
     is_even: boolean,
     /**
-     * The index of the segment based on all the segments of the run. This may
-     * differ from the index of this `SplitStateJson` in the
-     * `SplitsComponentStateJson` object, as there can be a scrolling window,
-     * showing only a subset of segments. Indices are not guaranteed to be
-     * unique, as they may appear in both group headers and in segments within
-     * the groups. Only the pair of index and `is_subsplit` is unique.
+     * TODO
      */
-    index: number,
+    segment_range: SegmentRange,
 }
 
 /** Describes the state of a single segment's column to visualize. */

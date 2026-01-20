@@ -4,7 +4,7 @@
 //! theoretically perfect segment times, this information is only an
 //! approximation of how much time can actually be saved.
 
-use crate::{TimeSpan, analysis, timing::Snapshot};
+use crate::{TimeSpan, analysis, run::SegmentRange, timing::Snapshot};
 
 /// Calculates how much time could be saved on the given segment with the given
 /// comparison. This information is based on the best segments. Considering the
@@ -61,6 +61,30 @@ pub fn calculate(
         }
     }
     .unwrap_or_default()
+}
+
+/// TODO
+pub fn calculate_for_range(
+    timer: &Snapshot,
+    segment_range: &SegmentRange,
+    comparison: &str,
+    live: bool,
+) -> (Option<TimeSpan>, bool) {
+    segment_range.iter().fold(
+        (Some(TimeSpan::default()), false),
+        |(time_save, updates_frequently), segment_index| {
+            let (new_time_save, new_updates_frequently) =
+                calculate(timer, segment_index, comparison, live);
+            let result_time_save = match (time_save, new_time_save) {
+                (Some(x), Some(y)) => Some(x + y),
+                _ => None,
+            };
+            (
+                result_time_save,
+                updates_frequently || new_updates_frequently,
+            )
+        },
+    )
 }
 
 /// Calculates how much time could be saved on the remainder of the run with the

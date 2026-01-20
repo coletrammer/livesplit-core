@@ -37,7 +37,9 @@ pub use editor::{Editor, RenameError};
 pub use linked_layout::LinkedLayout;
 pub use run_metadata::{CustomVariable, RunMetadata};
 pub use segment::Segment;
-pub use segment_groups::{SegmentGroup, SegmentGroupView, SegmentGroups, SegmentGroupsIter};
+pub use segment_groups::{
+    SegmentGroup, SegmentGroupView, SegmentGroups, SegmentGroupsIter, SegmentRange,
+};
 pub use segment_history::SegmentHistory;
 
 #[cfg(feature = "auto-splitting")]
