@@ -1,6 +1,6 @@
 use crate::{
     GeneralLayoutSettings, TimeSpan, TimingMethod,
-    analysis::{self, possible_time_save, split_color},
+    analysis::{self, possible_time_save, split_range_color},
     comparison,
     component::splits::Settings as SplitsSettings,
     platform::prelude::*,
@@ -388,7 +388,7 @@ fn time_column_update_value(
             let split_time = timer.run().segment(segment_range.last()).split_time()[method];
             let delta = catch! {
                 split_time? -
-                timer.run().segment(segment_range.start()).comparison(comparison)[method]?
+                timer.run().segment(segment_range.last()).comparison(comparison)[method]?
             };
             let (value, formatter) = if delta.is_none() && column.update_with.has_fallback() {
                 (split_time, ColumnFormatter::Time)
@@ -397,16 +397,7 @@ fn time_column_update_value(
             };
             (
                 value,
-                // TODO: consider whole segment range for coloring
-                split_color(
-                    timer,
-                    delta,
-                    segment_range.last(),
-                    true,
-                    true,
-                    comparison,
-                    method,
-                ),
+                split_range_color(timer, delta, segment_range, true, true, comparison, method),
                 formatter,
             )
         }
@@ -443,16 +434,7 @@ fn time_column_update_value(
             };
             (
                 value,
-                // TODO: split_color() needs to take the whole range to be fully correct
-                split_color(
-                    timer,
-                    delta,
-                    segment_range.last(),
-                    false,
-                    true,
-                    comparison,
-                    method,
-                ),
+                split_range_color(timer, delta, segment_range, false, true, comparison, method),
                 formatter,
             )
         }

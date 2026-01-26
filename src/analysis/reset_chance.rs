@@ -32,7 +32,7 @@ pub fn calculate(timer: &Snapshot) -> SuccessCounts {
         TimerPhase::Running | TimerPhase::Paused => {
             let current_index = timer.current_split_index().unwrap_or_default();
             let total_attempts = if current_index == 0 {
-                run.attempt_count()
+                run.attempt_count() - 1
             } else {
                 run.segments()[current_index - 1]
                     .segment_history()
