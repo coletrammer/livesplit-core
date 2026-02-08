@@ -5,7 +5,7 @@
 
 use super::{Json, output_vec, str};
 use crate::{
-    linked_layout::OwnedLinkedLayout, run::OwnedRun, slice,
+    linked_layout::OwnedLinkedLayout, output_str, run::OwnedRun, slice,
     sum_of_best_cleaner::OwnedSumOfBestCleaner,
 };
 use livesplit_core::{
@@ -499,4 +499,20 @@ pub extern "C" fn RunEditor_clean_sum_of_best(
     this: &'static mut RunEditor,
 ) -> OwnedSumOfBestCleaner {
     Box::new(this.clean_sum_of_best())
+}
+
+/// TODO
+#[unsafe(no_mangle)]
+pub extern "C" fn RunEditor_export_best_segment_times(
+    this: &'static mut RunEditor,
+) -> *const c_char {
+    output_str(this.export_best_segment_times())
+}
+
+/// TODO
+#[unsafe(no_mangle)]
+pub extern "C" fn RunEditor_export_personal_best_times(
+    this: &'static mut RunEditor,
+) -> *const c_char {
+    output_str(this.export_personal_best_times())
 }

@@ -1,6 +1,5 @@
 //! The editor module provides an editor for [`Run`] objects. The editor ensures
 //! that all the different invariants of the [`Run`] objects are upheld no matter
-//! what kind of operations are being applied to the [`Run`]. It provides the
 //! current state of the editor as state objects that can be visualized by any
 //! kind of User Interface.
 
@@ -9,12 +8,16 @@ use crate::{
     Run, Segment, Time, TimeSpan, TimingMethod, comparison,
     platform::prelude::*,
     settings::Image,
-    timing::ParseError as ParseTimeSpanError,
+    timing::{
+        ParseError as ParseTimeSpanError,
+        formatter::{Accuracy, Regular, TimeFormatter},
+    },
     util::{PopulateString, caseless},
 };
 use core::{mem::swap, num::ParseIntError};
 use snafu::{OptionExt, ResultExt};
 
+use core::fmt::Write as FmtWrite;
 pub mod cleaning;
 mod fuzzy_list;
 mod segment_row;
@@ -962,6 +965,98 @@ impl Editor {
     /// allows you to delete them individually if any of them seem wrong.
     pub fn clean_sum_of_best(&mut self) -> SumOfBestCleaner<'_> {
         SumOfBestCleaner::new(&mut self.run)
+    }
+
+    pub fn export_best_segment_times(&self) -> String {
+        let mut output = String::new();
+        if self.run().segment_groups().groups().is_empty() {
+            for segment in self.run.segments() {
+                write!(
+                    output,
+                    "{}\n",
+                    Regular::with_accuracy(Accuracy::Hundredths)
+                        .format(segment.best_segment_time().game_time),
+                );
+            }
+        } else {
+            for group in self.run().segment_groups().iter_with(self.run().segments()) {
+                let mut best_segment_time: Option<TimeSpan> = None;
+                for (attempt, time) in group
+                    .segments()
+                    .last()
+                    .unwrap()
+                    .segment_history()
+                    .iter_actual_runs()
+                {
+                    let mut time = TimeSpan::default();
+                    for segment in group.segments() {
+                        if let Some(gt) = segment
+                            .segment_history()
+                            .get(*attempt)
+                            .and_then(|x| x.game_time)
+                        {
+                            time += gt;
+                        } else {
+                            continue;
+                        }
+                    }
+                    if best_segment_time.is_none_or(|t| time < t) {
+                        best_segment_time = Some(time);
+                    }
+                }
+                write!(
+                    output,
+                    "{}\n",
+                    Regular::with_accuracy(Accuracy::Hundredths).format(best_segment_time),
+                );
+            }
+        }
+        output
+    }
+
+    pub fn export_personal_best_times(&self) -> String {
+        let mut output = String::new();
+        if self.run().segment_groups().groups().is_empty() {
+            for (segment_index, segment) in self.run.segments().iter().enumerate() {
+                let prev_time = if segment_index == 0 {
+                    Some(TimeSpan::default())
+                } else {
+                    self.run().segments()[segment_index - 1]
+                        .personal_best_split_time()
+                        .game_time
+                };
+                let curr_time = segment.personal_best_split_time().game_time;
+                if prev_time.is_some() && curr_time.is_some() {
+                    write!(
+                        output,
+                        "{}\n",
+                        Regular::with_accuracy(Accuracy::Hundredths)
+                            .format(curr_time.unwrap() - prev_time.unwrap()),
+                    );
+                }
+            }
+        } else {
+            for group in self.run().segment_groups().iter_with(self.run().segments()) {
+                let segment_index = group.start_index();
+                let prev_time = if segment_index == 0 {
+                    Some(TimeSpan::default())
+                } else {
+                    self.run().segments()[segment_index - 1]
+                        .personal_best_split_time()
+                        .game_time
+                };
+                let curr_time = group.ending_segment().personal_best_split_time().game_time;
+                if prev_time.is_some() && curr_time.is_some() {
+                    write!(
+                        output,
+                        "{}\n",
+                        Regular::with_accuracy(Accuracy::Hundredths)
+                            .format(curr_time.unwrap() - prev_time.unwrap()),
+                    );
+                }
+            }
+        }
+        output
     }
 }
 
