@@ -399,7 +399,10 @@ impl Component {
                     &segment.segment_range,
                     current_split,
                     method,
-                    segment.kind != FlattenedSegmentGroupItemKind::Subsplit,
+                    segment.kind
+                        == FlattenedSegmentGroupItemKind::GroupHeader(
+                            SegmentGroupVisibility::Shown,
+                        ),
                 );
             }
 
