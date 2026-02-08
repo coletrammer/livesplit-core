@@ -64,6 +64,8 @@ pub enum Value {
     ColumnUpdateWith(ColumnUpdateWith),
     /// A value describing when to update a column of the Splits Component.
     ColumnUpdateTrigger(ColumnUpdateTrigger),
+    /// A value optionally describing when to update a column of the Splits Component.
+    OptionalColumnUpdateTrigger(Option<ColumnUpdateTrigger>),
     /// A value describing what hotkey to press to trigger a certain action.
     Hotkey(Option<Hotkey>),
     /// A value describing the direction of a layout.
@@ -171,6 +173,12 @@ impl From<ColumnUpdateWith> for Value {
 impl From<ColumnUpdateTrigger> for Value {
     fn from(x: ColumnUpdateTrigger) -> Self {
         Value::ColumnUpdateTrigger(x)
+    }
+}
+
+impl From<Option<ColumnUpdateTrigger>> for Value {
+    fn from(x: Option<ColumnUpdateTrigger>) -> Self {
+        Value::OptionalColumnUpdateTrigger(x)
     }
 }
 
@@ -354,6 +362,14 @@ impl Value {
         }
     }
 
+    /// Tries to convert the value into an Optional Column Update Trigger.
+    pub fn into_optional_column_update_trigger(self) -> Result<Option<ColumnUpdateTrigger>> {
+        match self {
+            Value::OptionalColumnUpdateTrigger(v) => Ok(v),
+            _ => Err(Error::WrongType),
+        }
+    }
+
     /// Tries to convert the value into a hotkey.
     pub fn into_hotkey(self) -> Result<Option<Hotkey>> {
         match self {
@@ -504,6 +520,12 @@ impl From<Value> for ColumnUpdateWith {
 impl From<Value> for ColumnUpdateTrigger {
     fn from(value: Value) -> Self {
         value.into_column_update_trigger().unwrap()
+    }
+}
+
+impl From<Value> for Option<ColumnUpdateTrigger> {
+    fn from(value: Value) -> Self {
+        value.into_optional_column_update_trigger().unwrap()
     }
 }
 

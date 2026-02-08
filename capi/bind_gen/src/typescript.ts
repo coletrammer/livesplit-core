@@ -763,6 +763,7 @@ export type SettingsDescriptionValueJson =
     { ColumnStartWith: ColumnStartWith } |
     { ColumnUpdateWith: ColumnUpdateWith } |
     { ColumnUpdateTrigger: ColumnUpdateTrigger } |
+    { OptionalColumnUpdateTrigger: ColumnUpdateTrigger | null } |
     { Hotkey: string } |
     { LayoutDirection: LayoutDirection } |
     { Font: Font | null } |

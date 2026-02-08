@@ -1,6 +1,6 @@
 use crate::{
     GeneralLayoutSettings, TimeSpan, TimingMethod,
-    analysis::{self, possible_time_save, split_range_color},
+    analysis::{self, check_segment_range_live_delta, possible_time_save, split_range_color},
     comparison,
     component::splits::Settings as SplitsSettings,
     platform::prelude::*,
@@ -51,6 +51,8 @@ pub struct TimeColumn {
     pub update_with: ColumnUpdateWith,
     /// Specifies when a column's value gets updated.
     pub update_trigger: ColumnUpdateTrigger,
+    /// Overrides the update trigger for a segment group header.
+    pub segment_group_update_trigger: Option<ColumnUpdateTrigger>,
     /// The comparison chosen. Uses the Timer's current comparison if set to
     /// `None`.
     pub comparison_override: Option<String>,
@@ -146,6 +148,7 @@ impl Default for TimeColumn {
             start_with: ColumnStartWith::Empty,
             update_with: ColumnUpdateWith::DontUpdate,
             update_trigger: ColumnUpdateTrigger::Contextual,
+            segment_group_update_trigger: None,
             comparison_override: None,
             timing_method: None,
         }
@@ -187,6 +190,7 @@ pub fn update_state(
     segment_range: &SegmentRange,
     current_split: Option<usize>,
     method: TimingMethod,
+    is_segment_group_header: bool,
 ) {
     match &column_settings.kind {
         ColumnKind::Variable(column) => {
@@ -229,6 +233,7 @@ pub fn update_state(
                 segment_range,
                 current_split,
                 method,
+                is_segment_group_header,
             );
         }
     }
@@ -243,6 +248,7 @@ fn update_time_column(
     segment_range: &SegmentRange,
     current_split: Option<usize>,
     method: TimingMethod,
+    is_segment_group_header: bool,
 ) {
     let method = column_settings.timing_method.unwrap_or(method);
     let resolved_comparison = comparison::resolve(&column_settings.comparison_override, timer);
@@ -254,6 +260,7 @@ fn update_time_column(
         current_split,
         method,
         comparison,
+        is_segment_group_header,
     );
     let updated = update_value.is_some();
     let ((column_value, semantic_color, formatter), is_live) = update_value.unwrap_or_else(|| {
@@ -338,6 +345,7 @@ fn time_column_update_value(
     current_split: Option<usize>,
     method: TimingMethod,
     comparison: &str,
+    is_segment_group_header: bool,
 ) -> Option<((Option<TimeSpan>, SemanticColor, ColumnFormatter), bool)> {
     use self::{ColumnUpdateTrigger::*, ColumnUpdateWith::*};
 
@@ -349,14 +357,22 @@ fn time_column_update_value(
     let is_current_split = current_split.is_some_and(|index| segment_range.contains(index));
 
     if is_current_split {
-        if column.update_trigger == OnEndingSegment {
+        let update_trigger = if is_segment_group_header {
+            column
+                .segment_group_update_trigger
+                .unwrap_or(column.update_trigger)
+        } else {
+            column.update_trigger
+        };
+        if update_trigger == OnEndingSegment {
             // The trigger wants the value to be updated when splitting, not before.
             return None;
         }
 
-        if column.update_trigger == Contextual
-            && analysis::check_live_delta(
+        if update_trigger == Contextual
+            && check_segment_range_live_delta(
                 timer,
+                segment_range,
                 !column.update_with.is_segment_based(),
                 comparison,
                 method,
@@ -401,14 +417,26 @@ fn time_column_update_value(
                 formatter,
             )
         }
-        (Delta | DeltaWithFallback, true) => (
-            catch! {
+        (Delta | DeltaWithFallback, true) => {
+            let time_difference = catch! {
                 timer.current_time()[method]? -
-                timer.run().segment(segment_range.start()).comparison(comparison)[method]?
-            },
-            SemanticColor::Default,
-            ColumnFormatter::Delta,
-        ),
+                timer.run().segment(segment_range.last()).comparison(comparison)[method]?
+            };
+            let semantic_color = if segment_range.start() == segment_range.last() {
+                SemanticColor::Default
+            } else {
+                split_range_color(
+                    timer,
+                    time_difference,
+                    segment_range,
+                    true,
+                    true,
+                    comparison,
+                    method,
+                )
+            };
+            (time_difference, semantic_color, ColumnFormatter::Delta)
+        }
 
         (SegmentTime, false) => (
             analysis::previous_segment_range_time(timer, segment_range, method),

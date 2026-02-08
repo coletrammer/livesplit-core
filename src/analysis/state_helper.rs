@@ -309,6 +309,22 @@ pub fn live_segment_delta(
     )
 }
 
+// TODO
+pub fn live_segment_range_delta(
+    timer: &Snapshot,
+    segment_range: &SegmentRange,
+    comparison: &str,
+    method: TimingMethod,
+) -> Option<TimeSpan> {
+    segment_delta(
+        timer.run(),
+        segment_range.last(),
+        timer.current_time()[method]?,
+        comparison,
+        method,
+    )
+}
+
 /// Checks whether the live segment should now be shown.
 ///
 /// - `timer`: The current [`Timer`].
@@ -336,6 +352,41 @@ pub fn check_live_delta(
         let best_segment_delta =
             live_segment_delta(timer, segment_index, best_segments::NAME, method);
         let comparison_delta = live_segment_delta(timer, segment_index, comparison, method);
+
+        if split_delta && current_time > current_split
+            || catch! { current_segment? > best_segment? }.unwrap_or(false)
+                && best_segment_delta.is_some_and(|d| d > TimeSpan::zero())
+            || comparison_delta.is_some_and(|d| d > TimeSpan::zero())
+        {
+            return if split_delta {
+                catch! { current_time? - current_split? }
+            } else {
+                comparison_delta
+            };
+        }
+    }
+    None
+}
+
+/// TODO
+pub fn check_segment_range_live_delta(
+    timer: &Snapshot,
+    segment_range: &SegmentRange,
+    split_delta: bool,
+    comparison: &str,
+    method: TimingMethod,
+) -> Option<TimeSpan> {
+    if timer.current_phase() == TimerPhase::Running || timer.current_phase() == TimerPhase::Paused {
+        let current_split = timer
+            .run()
+            .segment(segment_range.last())
+            .comparison_timing_method(comparison, method);
+        let current_time = timer.current_time()[method];
+        let current_segment = live_segment_range_time(timer, segment_range, method);
+        let best_segment = best_segment_range_time(timer.run(), segment_range, method);
+        let best_segment_delta =
+            live_segment_range_delta(timer, segment_range, best_segments::NAME, method);
+        let comparison_delta = live_segment_range_delta(timer, segment_range, comparison, method);
 
         if split_delta && current_time > current_split
             || catch! { current_segment? > best_segment? }.unwrap_or(false)

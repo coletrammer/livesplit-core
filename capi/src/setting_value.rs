@@ -312,6 +312,31 @@ pub unsafe extern "C" fn SettingValue_from_column_update_trigger(
     Some(Box::new(value.into()))
 }
 
+/// Creates a new setting value from the optional column update trigger. If it doesn't
+/// match a known column update trigger, <NULL> is returned.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn SettingValue_from_empty_optional_column_update_trigger()
+-> NullableOwnedSettingValue {
+    Some(Box::new(None::<ColumnUpdateTrigger>.into()))
+}
+
+/// Creates a new setting value from the optional column update trigger. If it doesn't
+/// match a known column update trigger, <NULL> is returned.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn SettingValue_from_optional_column_update_trigger(
+    value: *const c_char,
+) -> NullableOwnedSettingValue {
+    // SAFETY: The caller guarantees that `value` is valid.
+    let value = unsafe { str(value) };
+    let value = match value {
+        "OnStartingSegment" => ColumnUpdateTrigger::OnStartingSegment,
+        "Contextual" => ColumnUpdateTrigger::Contextual,
+        "OnEndingSegment" => ColumnUpdateTrigger::OnEndingSegment,
+        _ => return None,
+    };
+    Some(Box::new(Some(value).into()))
+}
+
 /// Creates a new setting value from the layout direction. If it doesn't
 /// match a known layout direction, <NULL> is returned.
 #[unsafe(no_mangle)]

@@ -197,6 +197,7 @@ impl Default for Settings {
                         start_with: ColumnStartWith::ComparisonTime,
                         update_with: ColumnUpdateWith::SplitTime,
                         update_trigger: ColumnUpdateTrigger::OnEndingSegment,
+                        segment_group_update_trigger: Some(ColumnUpdateTrigger::OnStartingSegment),
                         comparison_override: None,
                         timing_method: None,
                     }),
@@ -207,6 +208,7 @@ impl Default for Settings {
                         start_with: ColumnStartWith::Empty,
                         update_with: ColumnUpdateWith::Delta,
                         update_trigger: ColumnUpdateTrigger::Contextual,
+                        segment_group_update_trigger: None,
                         comparison_override: None,
                         timing_method: None,
                     }),
@@ -397,6 +399,7 @@ impl Component {
                     &segment.segment_range,
                     current_split,
                     method,
+                    segment.kind != FlattenedSegmentGroupItemKind::Subsplit,
                 );
             }
 
@@ -587,6 +590,11 @@ impl Component {
                         column.update_trigger.into(),
                     ));
                     settings.fields.push(Field::new(
+                        "Segment Group Update Trigger".into(),
+                        "Overrides the condition that needs to be met for the time to get updated with the value specified in the Update With field for segment group headers. Before this condition is met, the time is the value specified in the Start With field.".into(),
+                        column.segment_group_update_trigger.into(),
+                    ));
+                    settings.fields.push(Field::new(
                         "Comparison".into(),
                         "The comparison that is being compared against for this column. If not specified, the current comparison is used.".into(),
                         column.comparison_override.clone().into(),
@@ -659,17 +667,18 @@ impl Component {
                             index -= 1;
                         }
                         ColumnKind::Time(column) => {
-                            if index < 5 {
+                            if index < 6 {
                                 match index {
                                     0 => column.start_with = value.into(),
                                     1 => column.update_with = value.into(),
                                     2 => column.update_trigger = value.into(),
-                                    3 => column.comparison_override = value.into(),
+                                    3 => column.segment_group_update_trigger = value.into(),
+                                    4 => column.comparison_override = value.into(),
                                     _ => column.timing_method = value.into(),
                                 }
                                 return;
                             }
-                            index -= 5;
+                            index -= 6;
                         }
                     }
                 }

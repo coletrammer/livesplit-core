@@ -147,6 +147,9 @@ pub fn settings(reader: &mut Reader, component: &mut Component) -> Result<()> {
                                         start_with: ColumnStartWith::ComparisonTime,
                                         update_with: ColumnUpdateWith::SplitTime,
                                         update_trigger: ColumnUpdateTrigger::OnEndingSegment,
+                                        segment_group_update_trigger: Some(
+                                            ColumnUpdateTrigger::OnStartingSegment,
+                                        ),
                                         comparison_override: comparison_override.clone(),
                                         timing_method: None,
                                     }),
@@ -157,6 +160,7 @@ pub fn settings(reader: &mut Reader, component: &mut Component) -> Result<()> {
                                         start_with: ColumnStartWith::Empty,
                                         update_with: ColumnUpdateWith::Delta,
                                         update_trigger: ColumnUpdateTrigger::Contextual,
+                                        segment_group_update_trigger: None,
                                         comparison_override,
                                         timing_method: None,
                                     }),
